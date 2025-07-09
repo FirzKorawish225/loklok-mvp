@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import MarketGrid from "../components/MarketGrid";
 import { db } from "../firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { auth } from "../firebase"; // ✅ import auth
 
 const Market = () => {
   const [stalls, setStalls] = useState([]);
@@ -27,20 +28,29 @@ const Market = () => {
     setStalls(updated);
   };
 
-  const saveLayout = async () => {
-    try {
-      await addDoc(collection(db, "marketLayouts"), {
-        name: `My Market ${Date.now()}`,
-        stalls,
-        createdAt: new Date()
-      });
-      alert("บันทึก Layout สำเร็จ!");
-    } catch (error) {
-      console.error("Error adding document: ", error);
-      alert("เกิดข้อผิดพลาดในการบันทึก");
-    }
-  };
+const saveLayout = async () => {
+  const user = auth.currentUser;
 
+  if (!user) {
+    alert("กรุณาเข้าสู่ระบบก่อนบันทึก layout");
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "marketLayouts"), {
+      uid: user.uid, // ✅ ผูก user
+      name: `Market ของ ${user.email}`,
+      stalls,
+      createdAt: new Date(),
+    });
+    alert("บันทึก Layout สำเร็จ!");
+  } catch (error) {
+    console.error("เกิดข้อผิดพลาด:", error);
+    alert("ไม่สามารถบันทึก Layout ได้");
+  }
+};
+
+  
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold mb-4">Market Layout Builder</h1>
