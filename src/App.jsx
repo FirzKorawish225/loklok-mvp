@@ -7,6 +7,8 @@ import MyMarkets from "./pages/MyMarkets";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MarketBuilder from "./pages/MarketBuilder";
+import MarketEditor from "./pages/MarketEditor";
+import MarketPublicView from "./pages/MarketPublicView";
 
 function App() {
   return (
@@ -14,6 +16,7 @@ function App() {
       <Navbar />
       <Routes>
   <Route path="/" element={<Home />} />
+  <Route path="/market-view/:marketId" element={<MarketPublicView />} />
   <Route path="/login" element={<Login />} />
   <Route
     path="/market"
@@ -39,6 +42,8 @@ function App() {
     </ProtectedRoute>
   }
 />
+  <Route path="/market/:id" element={<MarketEditor />} />
+
 </Routes>
 </Router>
     

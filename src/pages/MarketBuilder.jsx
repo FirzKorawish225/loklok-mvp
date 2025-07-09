@@ -25,20 +25,44 @@ const MarketBuilder = () => {
     setLayout([...layout, newSlot]);
   };
 
-  const handleSave = async () => {
-    try {
-      await addDoc(collection(db, "markets"), {
-        name: marketName,
-        description,
-        ownerUid: user.uid,
-        createdAt: serverTimestamp(),
-        layout: layout,
-      });
-      alert("บันทึกตลาดเรียบร้อยแล้ว");
-    } catch (err) {
-      console.error("Error saving market:", err);
+const handleSave = async () => {
+  try {
+    if (!user) {
+      alert("กรุณาเข้าสู่ระบบก่อน");
+      return;
     }
-  };
+
+    // ✅ ตรวจสอบและแปลง layout ให้ไม่มี field undefined
+    const cleanedLayout = layout.map((slot) => ({
+      i: slot.i ?? "",
+      x: typeof slot.x === "number" ? slot.x : 0,
+      y: typeof slot.y === "number" && isFinite(slot.y) ? slot.y : 0,
+      w: typeof slot.w === "number" ? slot.w : 2,
+      h: typeof slot.h === "number" ? slot.h : 2,
+    }));
+
+    console.log("Saving market:", {
+      name: marketName,
+      description,
+      ownerUid: user.uid,
+      layout: cleanedLayout,
+    });
+
+    await addDoc(collection(db, "markets"), {
+      name: marketName,
+      description,
+      ownerUid: user.uid,
+      createdAt: serverTimestamp(),
+      layout: cleanedLayout,
+    });
+
+    alert("บันทึกตลาดเรียบร้อยแล้ว");
+  } catch (err) {
+    console.error("Error saving market:", err);
+    alert("บันทึกไม่สำเร็จ กรุณาลองใหม่");
+  }
+};
+
 
   return (
     <div className="max-w-5xl mx-auto p-6">
