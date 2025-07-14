@@ -1,12 +1,14 @@
-import React from "react";
-import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { Navigate } from "react-router-dom";
 
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, requiredRole }) => {
+  const { userData, loading } = useAuth();
 
-  if (loading) return <div className="p-8">กำลังโหลด...</div>;
-  if (!user) return <Navigate to="/login" />;
+  if (loading) return <p className="p-6">กำลังโหลด...</p>;
+
+  if (!userData || userData.role !== requiredRole) {
+    return <Navigate to="/" replace />;
+  }
 
   return children;
 };

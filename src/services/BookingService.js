@@ -4,43 +4,42 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
+  doc,
   addDoc,
+  deleteDoc,
   Timestamp,
 } from "firebase/firestore";
 
-/**
- * ดึงรายการจองทั้งหมดของตลาดนั้นๆ
- * @param {string} marketId
- * @returns {Promise<Array>}
- */
+// ✅ ใช้ในหน้า MarketPublicView
 export const getBookingsByMarket = async (marketId) => {
   const q = query(collection(db, "bookings"), where("marketId", "==", marketId));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
-/**
- * ตรวจสอบว่าล็อกนี้ถูกจองแล้วหรือไม่
- * @param {Array} bookings
- * @param {string} slotId
- * @returns {boolean}
- */
 export const isSlotBooked = (bookings, slotId) => {
   return bookings.some((b) => b.slotId === slotId);
 };
 
-/**
- * สร้างการจองใหม่
- * @param {Object} payload - { marketId, slotId, userId }
- * @returns {Promise}
- */
 export const createBooking = async ({ marketId, slotId, userId }) => {
-  if (!userId) throw new Error("ต้องเข้าสู่ระบบก่อนทำการจอง");
+  const userRef = doc(db, "users", userId);
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.exists()
+    ? userSnap.data()
+    : { displayName: "", phone: "", address: "" };
 
-  return await addDoc(collection(db, "bookings"), {
+  await addDoc(collection(db, "bookings"), {
     marketId,
     slotId,
     userId,
-    bookedAt: Timestamp.now(),
+    createdAt: Timestamp.now(),
+    name: userData.name || "",
+    phone: userData.phone || "",
+    address: userData.address || "",
   });
+};
+
+export const cancelBooking = async (bookingId) => {
+  await deleteDoc(doc(db, "bookings", bookingId));
 };

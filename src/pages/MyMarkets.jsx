@@ -43,6 +43,10 @@ const MyMarkets = () => {
               <h3 className="text-xl font-semibold mb-1">{market.name}</h3>
               <p className="text-sm text-gray-600">{market.description}</p>
               <p className="text-xs text-gray-400 mt-1 mb-3">Market ID: {market.id}</p>
+                <Link to={`/market/${market.id}/bookings`} className="text-sm text-purple-600 underline ml-4">
+                     📋 ดูรายการจอง
+                </Link>
+                
                 <Link 
                     to={`/market/${market.id}`} 
                     className="mt-2 inline-block text-blue-500 hover:underline text-sm"

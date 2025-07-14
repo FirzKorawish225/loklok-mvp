@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
 import { auth } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
+  const navigate = useNavigate();
 
-  const handleAuth = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      if (isRegister) {
-        await createUserWithEmailAndPassword(auth, email, password);
-        alert("ลงทะเบียนสำเร็จ ✅");
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-        alert("เข้าสู่ระบบสำเร็จ ✅");
-      }
+      await signInWithEmailAndPassword(auth, email, password);
+      alert("เข้าสู่ระบบสำเร็จ ✅");
     } catch (err) {
       alert(err.message);
     }
@@ -24,10 +20,8 @@ const Login = () => {
 
   return (
     <div className="max-w-md mx-auto mt-16 p-6 bg-white shadow rounded">
-      <h2 className="text-2xl font-bold mb-4 text-center">
-        {isRegister ? 'ลงทะเบียน' : 'เข้าสู่ระบบ'}
-      </h2>
-      <form onSubmit={handleAuth}>
+      <h2 className="text-2xl font-bold mb-4 text-center">เข้าสู่ระบบ</h2>
+      <form onSubmit={handleLogin}>
         <input
           type="email"
           placeholder="อีเมล"
@@ -48,17 +42,18 @@ const Login = () => {
           type="submit"
           className="w-full bg-blue-600 text-white py-2 rounded"
         >
-          {isRegister ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+          เข้าสู่ระบบ
         </button>
       </form>
       <p
-        onClick={() => setIsRegister(!isRegister)}
+        onClick={() => navigate('/register')}
         className="text-sm mt-4 text-center text-blue-600 cursor-pointer"
       >
-        {isRegister ? 'มีบัญชีแล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิก'}
+        ยังไม่มีบัญชี? สมัครสมาชิก
       </p>
     </div>
   );
 };
 
 export default Login;
+

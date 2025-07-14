@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { db } from "../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -10,8 +18,11 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const MarketEditor = () => {
   const { id } = useParams();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [market, setMarket] = useState(null);
   const [layout, setLayout] = useState([]);
+  const [bookingCounts, setBookingCounts] = useState({});
 
   useEffect(() => {
     const fetchMarket = async () => {
@@ -21,9 +32,25 @@ const MarketEditor = () => {
         const data = docSnap.data();
         setMarket(data);
         setLayout(data.layout || []);
+        setName(data.name || "");
+        setDescription(data.description || "");
       }
     };
+
+    const fetchBookingCounts = async () => {
+      const q = query(collection(db, "bookings"), where("marketId", "==", id));
+      const snapshot = await getDocs(q);
+      const counts = {};
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const slotId = data.slotId;
+        counts[slotId] = (counts[slotId] || 0) + 1;
+      });
+      setBookingCounts(counts);
+    };
+
     fetchMarket();
+    fetchBookingCounts();
   }, [id]);
 
   const handleAddSlot = () => {
@@ -43,20 +70,26 @@ const MarketEditor = () => {
   };
 
   const handleSave = async () => {
-    console.log("Saving Layout:", layout);
-
     if (!layout || !Array.isArray(layout)) {
       alert("ไม่พบ layout ที่จะบันทึก");
       return;
     }
 
     const cleanedLayout = layout.map(({ x, y, w, h, i }) => ({
-      x, y, w, h, i
+      x,
+      y,
+      w,
+      h,
+      i,
     }));
 
     try {
       const docRef = doc(db, "markets", id);
-      await updateDoc(docRef, { layout: cleanedLayout });
+      await updateDoc(docRef, {
+        name,
+        description,
+        layout: cleanedLayout,
+      });
       alert("บันทึก Layout เรียบร้อยแล้ว");
     } catch (err) {
       console.error("Error updating layout:", err);
@@ -73,6 +106,21 @@ const MarketEditor = () => {
       <p className="text-sm text-gray-500 mb-3">
         * คุณสามารถเพิ่ม/ลบ/ลากจัดตำแหน่งล็อกได้ตามต้องการ
       </p>
+
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="ชื่อตลาด"
+        className="border p-2 w-full mb-2"
+      />
+
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="คำอธิบายตลาด"
+        className="border p-2 w-full mb-4"
+      />
 
       <div className="flex gap-4 mb-4">
         <button
@@ -102,10 +150,15 @@ const MarketEditor = () => {
         {layout.map((item, index) => (
           <div
             key={item.i}
-            style={{ backgroundColor: `hsl(${(index * 50) % 360}, 70%, 80%)` }}
-            className="border border-gray-400 rounded shadow-md flex items-center justify-center text-sm font-medium text-gray-800"
+            style={{
+              backgroundColor: `hsl(${(index * 50) % 360}, 70%, 80%)`,
+            }}
+            className="border border-gray-400 rounded shadow-md flex flex-col items-center justify-center text-sm font-medium text-gray-800"
           >
-            {item.i}
+            <strong>{item.i}</strong>
+            <span className="text-xs text-gray-600">
+              จองแล้ว: {bookingCounts[item.i] || 0}
+            </span>
           </div>
         ))}
       </ResponsiveGridLayout>
@@ -121,5 +174,3 @@ const MarketEditor = () => {
 };
 
 export default MarketEditor;
-
-

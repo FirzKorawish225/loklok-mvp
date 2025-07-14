@@ -1,13 +1,17 @@
-
 import React, { useContext, useState, useEffect, createContext } from "react";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 // Create Context
 const AuthContext = createContext();
 
-// Export useAuth to access context
+// Hook
 export const useAuth = () => {
   return useContext(AuthContext);
 };
@@ -15,44 +19,41 @@ export const useAuth = () => {
 // Provider Component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
+
       if (firebaseUser) {
         const docRef = doc(db, "users", firebaseUser.uid);
         const docSnap = await getDoc(docRef);
+
         if (docSnap.exists()) {
-          setRole(docSnap.data().role || "seller");
+          setUserData({ uid: firebaseUser.uid, email: firebaseUser.email, ...docSnap.data() });
         } else {
-          setRole("seller");
+          // ถ้าไม่มีข้อมูล ให้สร้าง default
+          setUserData({ uid: firebaseUser.uid, email: firebaseUser.email, role: "seller" });
         }
       } else {
-        setRole(null);
+        setUserData(null);
       }
+
       setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
-  const signup = (email, password) => {
-    return createUserWithEmailAndPassword(auth, email, password);
-  };
-
-  const login = (email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
-  };
-
-  const logout = () => {
-    return signOut(auth);
-  };
+  const signup = (email, password) => createUserWithEmailAndPassword(auth, email, password);
+  const login = (email, password) => signInWithEmailAndPassword(auth, email, password);
+  const logout = () => signOut(auth);
 
   const value = {
     user,
-    role,
+    userData,        // 👉 ข้อมูล Firestore ของ user
+    role: userData?.role || null, // 👉 ใช้ได้ง่ายในการเรียก role โดยตรง
     login,
     logout,
     signup,
