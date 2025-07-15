@@ -1,16 +1,15 @@
-import { useAuth } from "../contexts/AuthContext";
+import React from "react";
 import { Navigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
-const ProtectedRoute = ({ children, requiredRole }) => {
-  const { userData, loading } = useAuth();
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth(); // ✅ ตรวจสอบ loading flag
 
-  if (loading) return <p className="p-6">กำลังโหลด...</p>;
-
-  if (!userData || userData.role !== requiredRole) {
-    return <Navigate to="/" replace />;
+  if (loading) {
+    return <div className="p-6">กำลังโหลด...</div>;
   }
 
-  return children;
+  return user ? children : <Navigate to="/" />;
 };
 
 export default ProtectedRoute;

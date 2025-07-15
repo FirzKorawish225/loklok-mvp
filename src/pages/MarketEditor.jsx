@@ -13,6 +13,11 @@ import {
 import { Responsive, WidthProvider } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
+import {
+  GoogleMap,
+  Marker,
+  useLoadScript,
+} from "@react-google-maps/api";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -24,6 +29,10 @@ const MarketEditor = () => {
   const [layout, setLayout] = useState([]);
   const [bookingCounts, setBookingCounts] = useState({});
 
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+  });
+
   useEffect(() => {
     const fetchMarket = async () => {
       const docRef = doc(db, "markets", id);
@@ -31,7 +40,12 @@ const MarketEditor = () => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setMarket(data);
-        setLayout(data.layout || []);
+        setLayout(
+          (data.layout || []).map((slot) => ({
+            ...slot,
+            type: slot.type || "daily", // default type if not set
+          }))
+        );
         setName(data.name || "");
         setDescription(data.description || "");
       }
@@ -53,6 +67,16 @@ const MarketEditor = () => {
     fetchBookingCounts();
   }, [id]);
 
+  const handleMapClick = (event) => {
+    const lat = event.latLng.lat();
+    const lng = event.latLng.lng();
+    setMarket((prev) => ({
+      ...prev,
+      lat,
+      lng,
+    }));
+  };
+
   const handleAddSlot = () => {
     const newSlot = {
       i: `S${layout.length + 1}`,
@@ -60,6 +84,7 @@ const MarketEditor = () => {
       y: Infinity,
       w: 2,
       h: 2,
+      type: "daily", // default type
     };
     setLayout([...layout, newSlot]);
   };
@@ -69,26 +94,29 @@ const MarketEditor = () => {
     setLayout(layout.slice(0, -1));
   };
 
-  const handleSave = async () => {
-    if (!layout || !Array.isArray(layout)) {
-      alert("ไม่พบ layout ที่จะบันทึก");
-      return;
-    }
+  const handleChangeSlotType = (index, newType) => {
+    const updated = [...layout];
+    updated[index].type = newType;
+    setLayout(updated);
+  };
 
-    const cleanedLayout = layout.map(({ x, y, w, h, i }) => ({
+  const handleSave = async () => {
+    const cleanedLayout = layout.map(({ x, y, w, h, i, type }) => ({
       x,
       y,
       w,
       h,
       i,
+      type: type || "daily",
     }));
 
     try {
-      const docRef = doc(db, "markets", id);
-      await updateDoc(docRef, {
+      await updateDoc(doc(db, "markets", id), {
         name,
         description,
         layout: cleanedLayout,
+        lat: market.lat,
+        lng: market.lng,
       });
       alert("บันทึก Layout เรียบร้อยแล้ว");
     } catch (err) {
@@ -103,10 +131,6 @@ const MarketEditor = () => {
     <div className="max-w-5xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">แก้ไข: {market.name}</h1>
 
-      <p className="text-sm text-gray-500 mb-3">
-        * คุณสามารถเพิ่ม/ลบ/ลากจัดตำแหน่งล็อกได้ตามต้องการ
-      </p>
-
       <input
         type="text"
         value={name}
@@ -114,7 +138,6 @@ const MarketEditor = () => {
         placeholder="ชื่อตลาด"
         className="border p-2 w-full mb-2"
       />
-
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
@@ -122,17 +145,25 @@ const MarketEditor = () => {
         className="border p-2 w-full mb-4"
       />
 
+      {isLoaded && market.lat && market.lng && (
+        <div className="mb-6">
+          <h4 className="text-sm text-gray-600 mb-1">เลือกพิกัดบนแผนที่</h4>
+          <GoogleMap
+            mapContainerStyle={{ width: "100%", height: "400px" }}
+            center={{ lat: market.lat, lng: market.lng }}
+            zoom={15}
+            onClick={handleMapClick}
+          >
+            <Marker position={{ lat: market.lat, lng: market.lng }} />
+          </GoogleMap>
+        </div>
+      )}
+
       <div className="flex gap-4 mb-4">
-        <button
-          onClick={handleAddSlot}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
+        <button onClick={handleAddSlot} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
           เพิ่มล็อก
         </button>
-        <button
-          onClick={handleRemoveLastSlot}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-        >
+        <button onClick={handleRemoveLastSlot} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
           ลบล็อกสุดท้าย
         </button>
       </div>
@@ -144,21 +175,26 @@ const MarketEditor = () => {
         breakpoints={{ lg: 1200, md: 996, sm: 768 }}
         cols={{ lg: 12, md: 10, sm: 6 }}
         rowHeight={50}
-        isResizable={true}
-        isDraggable={true}
+        isResizable
+        isDraggable
       >
         {layout.map((item, index) => (
           <div
             key={item.i}
-            style={{
-              backgroundColor: `hsl(${(index * 50) % 360}, 70%, 80%)`,
-            }}
-            className="border border-gray-400 rounded shadow-md flex flex-col items-center justify-center text-sm font-medium text-gray-800"
+            style={{ backgroundColor: `hsl(${(index * 60) % 360}, 80%, 85%)` }}
+            className="border p-2 rounded flex flex-col justify-center items-center"
           >
             <strong>{item.i}</strong>
-            <span className="text-xs text-gray-600">
-              จองแล้ว: {bookingCounts[item.i] || 0}
-            </span>
+            <span className="text-xs text-gray-600 mb-1">จองแล้ว: {bookingCounts[item.i] || 0}</span>
+            <select
+              className="text-xs"
+              value={item.type}
+              onChange={(e) => handleChangeSlotType(index, e.target.value)}
+            >
+              <option value="daily">รายวัน</option>
+              <option value="monthly">รายเดือน</option>
+              <option value="both">รายวัน/รายเดือน</option>
+            </select>
           </div>
         ))}
       </ResponsiveGridLayout>

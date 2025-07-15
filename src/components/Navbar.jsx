@@ -39,6 +39,12 @@ const Navbar = () => {
               <Link to="/admin-dashboard" className="text-blue-600">แดชบอร์ดเจ้าของตลาด</Link>{" "}
             </>
           )}
+
+          {(role === "seller")&&(
+            <>
+          <Link to="/my-bookings" className="text-gray-700 hover:text-blue-600"> รายการจอง</Link>
+          </>
+          )}
         </>
       )}
     </div>

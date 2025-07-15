@@ -30,6 +30,7 @@ const MarketPublicView = () => {
   const { marketId } = useParams();
   const [market, setMarket] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [selectedBookingType, setSelectedBookingType] = useState("daily");
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
@@ -53,8 +54,15 @@ const MarketPublicView = () => {
 
     fetchData();
   }, [marketId]);
+  const [selectedType, setSelectedType] = useState({});
 
-  const handleBooking = async (slotId) => {
+const handleTypeChange = (slotId, type) => {
+  setSelectedType((prev) => ({
+    ...prev,
+    [slotId]: type,
+  }));
+};
+  const handleBooking = async (slotId, bookingType) => {
     if (!user) {
       alert("กรุณาเข้าสู่ระบบเพื่อทำการจอง");
       return;
@@ -66,7 +74,13 @@ const MarketPublicView = () => {
     }
 
     try {
-      await createBooking({ marketId, slotId, userId: user.uid });
+      await createBooking({
+        marketId,
+        slotId,
+        userId: user.uid,
+        bookingType,
+        createdAt: new Date(),
+      });
       alert("จองสำเร็จ!");
       window.location.reload();
     } catch (error) {
@@ -125,6 +139,7 @@ const MarketPublicView = () => {
             (b) => b.slotId === slot.i && b.userId === user?.uid
           );
           const isMine = !!myBooking;
+          const availableTypes = slot.types || ["daily"];
 
           return (
             <div
@@ -136,17 +151,31 @@ const MarketPublicView = () => {
                     : "#e2e8f0"
                   : "#c6f6d5",
               }}
-              className="border rounded shadow flex flex-col items-center justify-center text-sm text-gray-800"
+              className="border rounded shadow flex flex-col items-center justify-center text-sm text-gray-800 p-2"
             >
               <div className="font-bold">{slot.i}</div>
+
               {!isBooked ? (
                 user ? (
-                  <button
-                    className="mt-1 text-xs text-white bg-blue-600 px-2 py-1 rounded hover:bg-blue-700"
-                    onClick={() => handleBooking(slot.i)}
-                  >
-                    จอง
-                  </button>
+                  <>
+                    <select
+                      value={selectedType[slot.i] || ""}
+                      onChange={(e) => handleTypeChange(slot.i, e.target.value)}
+                    >
+                    {slot.type === "daily" || slot.type === "both" ? (
+                      <option value="daily">รายวัน</option>
+                    ) : null}
+                    {slot.type === "monthly" || slot.type === "both" ? (
+                      <option value="monthly">รายเดือน</option>
+                    ) : null}
+                    </select>
+                    <button
+                      className="text-xs text-white bg-blue-600 px-2 py-1 rounded hover:bg-blue-700"
+                      onClick={() => handleBooking(slot.i, selectedBookingType)}
+                    >
+                      จอง
+                    </button>
+                  </>
                 ) : (
                   <span className="text-xs mt-1 text-blue-700">
                     เข้าสู่ระบบเพื่อจอง

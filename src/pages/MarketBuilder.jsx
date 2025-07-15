@@ -42,6 +42,7 @@ const MarketBuilder = () => {
       y: Infinity,
       w: 2,
       h: 2,
+      type: "both",// หรือ "monthly", หรือ "both"
     };
     setLayout([...layout, newSlot]);
   };
@@ -58,12 +59,13 @@ const MarketBuilder = () => {
       }
 
       const cleanedLayout = layout.map((slot) => ({
-        i: slot.i ?? "",
-        x: typeof slot.x === "number" ? slot.x : 0,
-        y: typeof slot.y === "number" && isFinite(slot.y) ? slot.y : 0,
-        w: typeof slot.w === "number" ? slot.w : 2,
-        h: typeof slot.h === "number" ? slot.h : 2,
-      }));
+  i: slot.i ?? "",
+  x: typeof slot.x === "number" ? slot.x : 0,
+  y: typeof slot.y === "number" && isFinite(slot.y) ? slot.y : 0,
+  w: typeof slot.w === "number" ? slot.w : 2,
+  h: typeof slot.h === "number" ? slot.h : 2,
+  type: slot.type || "both", 
+}));
 
       await addDoc(collection(db, "markets"), {
         name: marketName,
@@ -177,16 +179,24 @@ const MarketBuilder = () => {
         isDraggable={true}
       >
         {layout.map((slot, index) => (
-          <div
-            key={slot.i}
-            style={{
-              backgroundColor: `hsl(${(index * 50) % 360}, 70%, 80%)`,
-            }}
-            className="border border-gray-400 rounded shadow-md flex items-center justify-center text-sm font-medium text-gray-800"
-          >
-            {slot.i}
-          </div>
-        ))}
+  <div key={slot.i} className="border rounded shadow-md p-1 text-sm bg-white">
+    <div className="font-medium mb-1">{slot.i}</div>
+    <select
+      className="text-xs border rounded w-full mb-1"
+      value={slot.type || "both"}
+      onChange={(e) => {
+        const updated = layout.map((s) =>
+          s.i === slot.i ? { ...s, type: e.target.value } : s
+        );
+        setLayout(updated);
+      }}
+    >
+      <option value="daily">รายวัน</option>
+      <option value="monthly">รายเดือน</option>
+      <option value="both">รายวัน/รายเดือน</option>
+    </select>
+  </div>
+))}
       </ResponsiveGridLayout>
     </div>
   );
