@@ -18,8 +18,8 @@ import Profile from "./pages/Profile";
 import BookingList from "./admin/BookingList";
 import MarketplaceMap from "./pages/MarketplaceMap";
 import MyBookings from "./pages/MyBookings";
-
-
+import AdminBookingList from "./pages/AdminBookingList";
+import OwnerDashboard from "./pages/OwnerDashboard";
 
 function App() {
   return (
@@ -35,6 +35,7 @@ function App() {
         <Route path="/market/:id/bookings" element={<MarketBookingOverview />} />
         <Route path="/market/:id" element={<MarketEditor />} />
         <Route path="/my-bookings" element={<MyBookings />} />
+        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
         <Route
           path="/market"
           element={
@@ -68,6 +69,7 @@ function App() {
           }
         />
         <Route path="/admin/bookings" element={<BookingList />} />
+        <Route path="/admin/bookings" element={<AdminBookingList />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
     </Router>

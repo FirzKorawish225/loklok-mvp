@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service cloud.firestore {
+ match /databases/{database}/documents {
+
+    // ✅ ให้ผู้ใช้ login แล้ว อ่าน/เขียน users ได้
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ✅ ใครก็อ่านตลาดได้ แต่เขียนได้เฉพาะเจ้าของ
+    match /markets/{marketId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        (request.resource.data.ownerUid == request.auth.uid ||  // สำหรับสร้าง
+         resource.data.ownerUid == request.auth.uid);           // สำหรับอัปเดต
+    }
+
+    // ✅ เปิดสิทธิ์เฉพาะคนที่ login แล้วเท่านั้น สำหรับ bookings
+    match /bookings/{bookingId} {
+  allow read: if true; // ✅ ใครก็อ่านได้
+  allow write: if request.auth != null; // ✏️ เขียนได้เฉพาะคนล็อกอิน
+}
+    match /markets/{marketId}/bookings/{bookingId} {
+  allow read, write: if request.auth != null;
+}
+  }
+}

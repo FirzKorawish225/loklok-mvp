@@ -41,11 +41,13 @@ const MarketEditor = () => {
         const data = docSnap.data();
         setMarket(data);
         setLayout(
-          (data.layout || []).map((slot) => ({
-            ...slot,
-            type: slot.type || "daily", // default type if not set
-          }))
-        );
+  (data.layout || []).map((slot) => ({
+    ...slot,
+    type: slot.type || "daily",
+    priceDaily: Number(slot.priceDaily || 0),
+    priceMonthly: Number(slot.priceMonthly || 0),
+  }))
+);
         setName(data.name || "");
         setDescription(data.description || "");
       }
@@ -101,14 +103,12 @@ const MarketEditor = () => {
   };
 
   const handleSave = async () => {
-    const cleanedLayout = layout.map(({ x, y, w, h, i, type }) => ({
-      x,
-      y,
-      w,
-      h,
-      i,
-      type: type || "daily",
-    }));
+    const cleanedLayout = layout.map(({ x, y, w, h, i, type, priceDaily, priceMonthly }) => ({
+  x, y, w, h, i,
+  type: type || "daily",
+  priceDaily: Number(priceDaily || 0),
+  priceMonthly: Number(priceMonthly || 0),
+}));
 
     try {
       await updateDoc(doc(db, "markets", id), {
@@ -180,22 +180,48 @@ const MarketEditor = () => {
       >
         {layout.map((item, index) => (
           <div
-            key={item.i}
-            style={{ backgroundColor: `hsl(${(index * 60) % 360}, 80%, 85%)` }}
-            className="border p-2 rounded flex flex-col justify-center items-center"
-          >
-            <strong>{item.i}</strong>
-            <span className="text-xs text-gray-600 mb-1">จองแล้ว: {bookingCounts[item.i] || 0}</span>
-            <select
-              className="text-xs"
-              value={item.type}
-              onChange={(e) => handleChangeSlotType(index, e.target.value)}
-            >
-              <option value="daily">รายวัน</option>
-              <option value="monthly">รายเดือน</option>
-              <option value="both">รายวัน/รายเดือน</option>
-            </select>
-          </div>
+  key={item.i}
+  style={{ backgroundColor: `hsl(${(index * 60) % 360}, 80%, 85%)` }}
+  className="border p-2 rounded flex flex-col gap-1 justify-center items-stretch"
+>
+  <strong className="text-center">{item.i}</strong>
+  <span className="text-xs text-gray-600 text-center">จองแล้ว: {bookingCounts[item.i] || 0}</span>
+
+  <label className="text-xs">ประเภท</label>
+  <select
+    className="text-xs border p-1"
+    value={item.type}
+    onChange={(e) => handleChangeSlotType(index, e.target.value)}
+  >
+    <option value="daily">รายวัน</option>
+    <option value="monthly">รายเดือน</option>
+    <option value="both">รายวัน/รายเดือน</option>
+  </select>
+
+  <label className="text-xs mt-1">ราคา (รายวัน)</label>
+  <input
+    type="number"
+    className="text-xs border p-1"
+    value={item.priceDaily ?? 0}
+    onChange={(e) => {
+      const updated = [...layout];
+      updated[index].priceDaily = Number(e.target.value || 0);
+      setLayout(updated);
+    }}
+  />
+
+  <label className="text-xs mt-1">ราคา (รายเดือน)</label>
+  <input
+    type="number"
+    className="text-xs border p-1"
+    value={item.priceMonthly ?? 0}
+    onChange={(e) => {
+      const updated = [...layout];
+      updated[index].priceMonthly = Number(e.target.value || 0);
+      setLayout(updated);
+    }}
+  />
+</div>
         ))}
       </ResponsiveGridLayout>
 

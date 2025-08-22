@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDmZTFI5EqYLgJVA54ghBW6fLRPHZpuq0U",
@@ -12,6 +13,12 @@ const firebaseConfig = {
   measurementId: "G-W6WX2DHRPL"
 };
 
+// Init Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+// Services
 export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);   // 👈 เพิ่มบรรทัดนี้
+
+export default app;

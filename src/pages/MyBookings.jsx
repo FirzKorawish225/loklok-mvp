@@ -1,77 +1,173 @@
+// src/pages/MyBookings.jsx
 import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  getDoc,
+  updateDoc,
+  addDoc,
+  Timestamp,
+} from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 
 const MyBookings = () => {
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
+  const [markets, setMarkets] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      if (!user) return;
+    if (!user) return;
+    setLoading(true);
 
-      const q = query(collection(db, "bookings"), where("userId", "==", user.uid));
-      const snapshot = await getDocs(q);
+    const q = query(collection(db, "bookings"), where("userId", "==", user.uid));
+    const unsub = onSnapshot(
+      q,
+      async (snap) => {
+        const marketCache = { ...markets };
+        const rows = [];
 
-      const results = await Promise.all(
-        snapshot.docs.map(async (docSnap) => {
-          const data = docSnap.data();
-          const marketRef = doc(db, "markets", data.marketId);
-          const marketSnap = await getDoc(marketRef);
-          const marketName = marketSnap.exists() ? marketSnap.data().name : "ตลาดไม่พบ";
+        for (const d of snap.docs) {
+          const b = d.data();
 
-          return {
-            id: docSnap.id,
-            marketName,
-            slotId: data.slotId,
-            type: data.type || "ไม่ระบุ",
-            createdAt: data.createdAt?.toDate().toLocaleString("th-TH"),
-            status: data.status || "จองแล้ว",
-          };
-        })
-      );
+          if (!marketCache[b.marketId]) {
+            const mSnap = await getDoc(doc(db, "markets", b.marketId));
+            marketCache[b.marketId] = mSnap.exists()
+              ? mSnap.data().name || "ไม่ทราบชื่อตลาด"
+              : "ไม่พบตลาด";
+          }
 
-      setBookings(results);
-      setLoading(false);
-    };
+          rows.push({ id: d.id, ...b, marketName: marketCache[b.marketId] });
+        }
 
-    fetchBookings();
-  }, [user]);
+        setMarkets(marketCache);
+        setBookings(rows);
+        setLoading(false);
+      },
+      (e) => {
+        console.error("onSnapshot bookings error:", e);
+        setLoading(false);
+      }
+    );
 
-  if (!user) return <p className="p-6">กรุณาเข้าสู่ระบบเพื่อดูการจองของคุณ</p>;
+    return () => unsub();
+  }, [user?.uid]);
 
-  if (loading) return <p className="p-6">กำลังโหลดข้อมูล...</p>;
+  const uploadSlipAndUpdateBooking = async (file, bookingId) => {
+  try {
+    if (!file) return;
+
+    // 1) Upload ไปตาม Storage Rules
+    const path = `payment-slips/${user.uid}/${bookingId}/${Date.now()}_${file.name}`;
+    const fileRef = ref(storage, path);
+    await uploadBytes(fileRef, file);
+    const downloadURL = await getDownloadURL(fileRef);
+
+    // 2) อัปเดตเอกสาร booking
+    await updateDoc(doc(db, "bookings", bookingId), {
+      paymentStatus: "waiting",
+      paymentSlipUrl: downloadURL,
+      paymentStoragePath: path,
+    });
+
+    // 3) ยิงแจ้งเตือนหา Owner (ดึง ownerUid จาก markets)
+    const bSnap = await getDoc(doc(db, "bookings", bookingId));
+    const b = bSnap.data();
+    const mSnap = await getDoc(doc(db, "markets", b.marketId));
+    const market = mSnap.data() || {};
+
+    await addDoc(collection(db, "notifications"), {
+      toUserId: market.ownerUid,
+      type: "payment_slip_uploaded",
+      title: "มีสลิปการชำระเงินใหม่",
+      message: `ผู้จองแนบสลิปสำหรับจุด ${b.slotId} ในตลาด ${market.name || "-"}`,
+      data: { marketId: b.marketId, slotId: b.slotId, bookingId, paymentStatus: "waiting" },
+      read: false,
+      createdAt: Timestamp.now(),
+    });
+
+    alert("อัปโหลดสลิปสำเร็จ รอเจ้าของตลาดอนุมัติ ✅");
+  } catch (err) {
+    console.error("upload slip error:", err);
+    alert(`อัปโหลดไม่สำเร็จ: ${err.message}`);
+  }
+};
+
+
+  if (loading) return <p className="p-6">กำลังโหลดรายการจอง...</p>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">รายการจองของฉัน</h1>
+
       {bookings.length === 0 ? (
         <p>ยังไม่มีรายการจอง</p>
       ) : (
-        <table className="w-full border">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2 border">ตลาด</th>
-              <th className="p-2 border">ล็อก</th>
-              <th className="p-2 border">ประเภท</th>
-              <th className="p-2 border">วันที่จอง</th>
-              <th className="p-2 border">สถานะ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bookings.map((b) => (
-              <tr key={b.id}>
-                <td className="p-2 border">{b.marketName}</td>
-                <td className="p-2 border">{b.slotId}</td>
-                <td className="p-2 border">{b.type}</td>
-                <td className="p-2 border">{b.createdAt}</td>
-                <td className="p-2 border">{b.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="space-y-4">
+          {bookings.map((b) => {
+            const isFinal = ["rejected", "cancelled", "paid"].includes(
+              (b.paymentStatus || "").toLowerCase()
+            );
+
+            return (
+              <div key={b.id} className="border p-4 rounded bg-white shadow-sm">
+                <p><strong>ตลาด:</strong> {b.marketName}</p>
+                <p><strong>ล็อก:</strong> {b.slotId}</p>
+                <p><strong>ประเภท:</strong> {b.bookingType}</p>
+                <p><strong>สถานะ:</strong> {b.status || "-"} / {b.paymentStatus || "-"}</p>
+
+                {b.bookingType === "รายวัน" ? (
+                  <>
+                    <p><strong>จากวันที่:</strong> {b.fromDate?.toDate?.()?.toLocaleDateString?.() || "-"}</p>
+                    <p><strong>ถึงวันที่:</strong> {b.toDate?.toDate?.()?.toLocaleDateString?.() || "-"}</p>
+                  </>
+                ) : (
+                  <p><strong>จำนวนเดือน:</strong> {b.months} เดือน</p>
+                )}
+
+                <p className="text-sm text-gray-500 mt-2">
+                  จองเมื่อ: {b.createdAt?.toDate?.()?.toLocaleString?.() || "-"}
+                </p>
+
+                {b.paymentSlipUrl && (
+                  <p className="mt-2 text-xs">
+                    📎{" "}
+                    <a
+                      href={b.paymentSlipUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-500 underline"
+                    >
+                      ดูสลิปที่แนบไว้
+                    </a>
+                  </p>
+                )}
+
+                {!isFinal && (
+                  <div className="mt-3">
+                    <label className="block text-sm mb-1">แนบสลิปการโอน:</label>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadSlipAndUpdateBooking(file, b.id);
+                      }}
+                    />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      รองรับภาพหรือ PDF; สถานะจะเป็น <b>waiting</b> จนกว่าเจ้าของตลาดจะตรวจ
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

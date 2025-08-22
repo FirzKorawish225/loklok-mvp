@@ -37,13 +37,15 @@ const MarketBuilder = () => {
 
   const handleAddSlot = () => {
     const newSlot = {
-      i: `S${layout.length + 1}`,
-      x: (layout.length * 2) % 12,
-      y: Infinity,
-      w: 2,
-      h: 2,
-      type: "both",// หรือ "monthly", หรือ "both"
-    };
+  i: `S${layout.length + 1}`,
+  x: (layout.length * 2) % 12,
+  y: Infinity,
+  w: 2,
+  h: 2,
+  type: "both",
+  priceDaily: 0,
+  priceMonthly: 0,
+};
     setLayout([...layout, newSlot]);
   };
 
@@ -64,7 +66,9 @@ const MarketBuilder = () => {
   y: typeof slot.y === "number" && isFinite(slot.y) ? slot.y : 0,
   w: typeof slot.w === "number" ? slot.w : 2,
   h: typeof slot.h === "number" ? slot.h : 2,
-  type: slot.type || "both", 
+  type: slot.type || "both",
+  priceDaily: Number(slot.priceDaily || 0),
+  priceMonthly: Number(slot.priceMonthly || 0),
 }));
 
       await addDoc(collection(db, "markets"), {
@@ -179,23 +183,43 @@ const MarketBuilder = () => {
         isDraggable={true}
       >
         {layout.map((slot, index) => (
-  <div key={slot.i} className="border rounded shadow-md p-1 text-sm bg-white">
-    <div className="font-medium mb-1">{slot.i}</div>
-    <select
-      className="text-xs border rounded w-full mb-1"
-      value={slot.type || "both"}
-      onChange={(e) => {
-        const updated = layout.map((s) =>
-          s.i === slot.i ? { ...s, type: e.target.value } : s
-        );
-        setLayout(updated);
-      }}
-    >
-      <option value="daily">รายวัน</option>
-      <option value="monthly">รายเดือน</option>
-      <option value="both">รายวัน/รายเดือน</option>
-    </select>
-  </div>
+ <div key={slot.i} className="border rounded shadow-md p-1 text-sm bg-white flex flex-col gap-1">
+  <div className="font-medium">{slot.i}</div>
+  <select
+    className="text-xs border rounded w-full"
+    value={slot.type || "both"}
+    onChange={(e) => {
+      const updated = layout.map((s) => (s.i === slot.i ? { ...s, type: e.target.value } : s));
+      setLayout(updated);
+    }}
+  >
+    <option value="daily">รายวัน</option>
+    <option value="monthly">รายเดือน</option>
+    <option value="both">รายวัน/รายเดือน</option>
+  </select>
+
+  <input
+    type="number"
+    className="text-xs border rounded w-full"
+    placeholder="ราคา/วัน (บาท)"
+    value={slot.priceDaily ?? 0}
+    onChange={(e) => {
+      const updated = layout.map((s) => (s.i === slot.i ? { ...s, priceDaily: Number(e.target.value || 0) } : s));
+      setLayout(updated);
+    }}
+  />
+
+  <input
+    type="number"
+    className="text-xs border rounded w-full"
+    placeholder="ราคา/เดือน (บาท)"
+    value={slot.priceMonthly ?? 0}
+    onChange={(e) => {
+      const updated = layout.map((s) => (s.i === slot.i ? { ...s, priceMonthly: Number(e.target.value || 0) } : s));
+      setLayout(updated);
+    }}
+  />
+</div>
 ))}
       </ResponsiveGridLayout>
     </div>
