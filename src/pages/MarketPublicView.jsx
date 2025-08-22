@@ -53,6 +53,25 @@ const selectionRange = ({ type, from, to, startMonth, months }) => {
   return null;
 };
 
+// เมื่อกด "จอง"
+const onClickHold = async () => {
+  const { lockId, expiresAt } = await holdSlot({
+    marketId: market.id,
+    slotId: selectedSlot.id,
+    fromDate: new Date(from).toISOString(),
+    toDate: new Date(to).toISOString(),
+  });
+  setLock({ lockId, expiresAt });
+  // เริ่มนับถอยหลัง 10 นาที
+};
+
+
+// เมื่อแนบสลิปแล้วกดยืนยัน
+const onClickConfirm = async () => {
+  await confirmBooking({ lockId: lock.lockId, type: selectedType, paymentSlipUrl });
+  // เคลียร์ state, แจ้งสำเร็จ
+};
+
 const MarketPublicView = () => {
   const { marketId: id } = useParams();
   const { user } = useAuth();

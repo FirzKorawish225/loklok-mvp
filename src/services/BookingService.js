@@ -11,8 +11,12 @@ import {
   deleteDoc,
   Timestamp,   // (ถ้าไม่ได้ใช้ updateDoc ในไฟล์นี้ ก็ไม่ต้อง import)
 } from "firebase/firestore";
+import { functions } from "../firebase";
+import { httpsCallable } from "firebase/functions";
 
 
+const holdSlotFn = httpsCallable(functions, 'holdSlot');
+const confirmBookingFn = httpsCallable(functions, 'confirmBooking');
 
 /** ---------- Utils ---------- */
 const isRangeOverlap = (aStart, aEnd, bStart, bEnd) =>
@@ -40,6 +44,16 @@ export const getBookingsByMarket = async (marketId) => {
 
 export const isSlotBooked = (bookings, slotId) =>
   bookings.some((b) => b.slotId === slotId);
+
+export const holdSlot = async ({ marketId, slotId, fromDate, toDate }) => {
+  const res = await holdSlotFn({ marketId, slotId, from: fromDate, to: toDate });
+  return res.data; // { lockId, expiresAt }
+};
+
+export const confirmBooking = async ({ lockId, type, paymentSlipUrl }) => {
+  const res = await confirmBookingFn({ lockId, type, paymentSlipUrl });
+  return res.data; // { ok: true }
+};
 
 /** ---------- Create booking (with overlap protection) ---------- */
 export const createBooking = async (payload) => {
