@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /markets/{marketId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if false; // เขียนผ่าน Functions เท่านั้น
+    }
+
+    match /slotLocks/{lockId} {
+      allow read: if request.auth != null;
+      allow write: if false; // เขียนผ่าน Functions เท่านั้น
+    }
+
+    match /notifications/{notifId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.toUserId;
+      allow write: if false; // เขียนผ่าน Functions เท่านั้น
+    }
+  }
+}
